@@ -214,6 +214,17 @@
     @media (min-width: 860px) {
       .tab-content.active { grid-template-columns: minmax(280px, 370px) minmax(0, 1fr); }
     }
+
+    .ctrl-item label.plain-label { display:block; line-height:1.5; }
+    .diff-experiment { grid-column: 1 / -1; }
+    .diff-grid { display:grid; grid-template-columns: minmax(0, 260px) minmax(0,1fr); gap:1rem; align-items:start; }
+    .diff-controls { display:flex; flex-direction:column; gap:.8rem; }
+    .diff-choices { display:flex; gap:.4rem; flex-wrap:wrap; }
+    .diff-choices label { display:flex; align-items:center; gap:.3rem; padding:.55rem .7rem; border:1px solid var(--border); border-radius:9px; cursor:pointer; font-weight:600; }
+    .diff-choices input { accent-color:var(--primary); }
+    .diff-plot { width:100%; display:block; height:auto; border:1px solid var(--border); border-radius:9px; background:#fff; }
+    .diff-explain { font-size:.8rem; line-height:1.65; color:var(--muted); }
+    @media (max-width: 700px) { .diff-grid { grid-template-columns:1fr; } }
     .site-footer {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 0.4rem 1rem; padding: 1.2rem 0.35rem 0.5rem;
@@ -238,7 +249,7 @@
     <div id="tab-adc" class="tab-content active">
       <aside class="card control-panel">
         <div class="ctrl-item">
-          <label>理想 ADC 輸入範圍上限 (V<sub>ref</sub>)</label>
+          <label class="plain-label" for="sel-board">理想 ADC 輸入範圍上限（V<sub>ref</sub>）</label>
           <select id="sel-board">
             <option value="3.3">0–3.3 V（教學模型）</option>
             <option value="5.0">0–5.0 V（教學模型）</option>
@@ -332,6 +343,36 @@
           </div>
         </div>
       </main>
+
+    <!-- 單端與差動量測：獨立互動區塊，仍屬於第一單元 -->
+    <section class="card diff-experiment" id="diff-experiment" aria-label="單端與差動量測比較">
+      <div class="chart-title"><span>延伸實驗：單端 vs. 差動量測</span><span style="font-size:.75rem;color:var(--muted)">調整共模干擾，觀察輸出差異</span></div>
+      <div class="diff-grid">
+        <div class="diff-controls">
+          <div class="diff-choices" role="radiogroup" aria-label="量測方式">
+            <label><input type="radio" name="diff-mode" value="single" checked>單端量測</label>
+            <label><input type="radio" name="diff-mode" value="diff">差動量測</label>
+          </div>
+          <div class="ctrl-item">
+            <label for="diff-noise">共同干擾振幅 <span class="val-tag" id="diff-noise-value">0.5 V</span></label>
+            <input type="range" id="diff-noise" min="0" max="1" step="0.05" value="0.5">
+          </div>
+          <div class="diff-explain" id="diff-readout" aria-live="polite"></div>
+        </div>
+        <div>
+          <svg id="diff-svg" class="diff-plot" viewBox="0 0 640 220" role="img" aria-label="單端與差動量測的時間波形比較">
+            <g id="diff-gridlines"></g>
+            <path id="diff-ideal" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4"></path>
+            <path id="diff-measured" fill="none" stroke="#7c3aed" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>
+            <text x="15" y="18" font-size="13" fill="#475569">灰虛線：理想目標訊號　紫線：量測結果</text>
+            <text x="15" y="207" font-size="12" fill="#64748b">時間（示意）</text>
+          </svg>
+          <div class="note" style="margin-top:.5rem">教學用理想模型：兩端受到相同共模干擾時，理想差動相減可將其抵消。實際抑制效果受 CMRR、電極接觸阻抗及電路限制影響。</div>
+        </div>
+      </div>
+      <div class="challenge" style="margin-top:.8rem"><strong>課堂挑戰</strong>把共同干擾調到 1.0 V，切換單端／差動量測。為什麼兩者差異這麼大？差動放大器與差動 ADC 是同一個元件嗎？</div>
+      <div class="note" style="margin-top:.7rem">EMG 典型流程：兩個量測電極 → 差動式儀表放大器與訊號調理 → 加入適當偏壓 → ESP32／Arduino 單端 ADC。具差動輸入的外接 ADC 是另一種硬體選擇。本示意不代表 Grove 模組的完整內部電路。</div>
+    </section>
     </div>
 
     <!-- ================= 單元 2：濾波與真實 FFT 頻譜分析 ================= -->
@@ -1114,6 +1155,34 @@
       el.addEventListener('input', renderEMG);
     });
 
+
+    // 單端／差動量測：教學用理想共模干擾模型
+    function renderDifferential() {
+      const selected = document.querySelector('input[name="diff-mode"]:checked');
+      if (!selected) return;
+      const mode = selected.value;
+      const noise = Number(document.getElementById('diff-noise').value);
+      document.getElementById('diff-noise-value').textContent = noise.toFixed(2) + ' V';
+      const ideal = [], measured = [];
+      const center = 111, scale = 63, count = 450;
+      for (let i = 0; i < count; i++) {
+        const t = i / (count - 1), x = 12 + t * 616;
+        const signal = 0.28 * Math.sin(2 * Math.PI * 7 * t) + 0.07 * Math.sin(2 * Math.PI * 17 * t);
+        const common = noise * Math.sin(2 * Math.PI * 1.35 * t);
+        ideal.push((i ? 'L' : 'M') + x.toFixed(2) + ' ' + (center - scale * signal).toFixed(2));
+        measured.push((i ? 'L' : 'M') + x.toFixed(2) + ' ' + (center - scale * (signal + (mode === 'single' ? common : 0))).toFixed(2));
+      }
+      document.getElementById('diff-ideal').setAttribute('d', ideal.join(' '));
+      document.getElementById('diff-measured').setAttribute('d', measured.join(' '));
+      document.getElementById('diff-readout').textContent = mode === 'diff'
+        ? '差動模式：輸出 = V+ − V−。理想情況下，共模干擾完全抵消。'
+        : '單端模式：以 GND 為參考，共同干擾會疊加在量測訊號上。';
+      document.getElementById('diff-gridlines').innerHTML = [55, 110, 165].map(y =>
+        `<line x1="12" x2="628" y1="${y}" y2="${y}" stroke="#e2e8f0"/>`).join('');
+    }
+    document.querySelectorAll('input[name="diff-mode"]').forEach(el => el.addEventListener('change', renderDifferential));
+    document.getElementById('diff-noise').addEventListener('input', renderDifferential);
+    renderDifferential();
     renderADC();
     window.addEventListener('resize', () => {
       [chartSample,chartQuant,chartFilterTime,chartFilterFFT,chartEmgStage1,chartEmgStage2].forEach(c => c.resize());
