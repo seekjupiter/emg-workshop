@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, initial-scale=1.0">
+  <title>EMG 與訊號處理｜互動實驗室</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-bg: #fee2e2;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0.75rem;
+      font-size: 14px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+      background: #e2e8f0;
+      padding: 0.25rem;
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 0;
+      padding: 0.5rem 0.3rem;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: center;
+      white-space: normal;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--card);
+      color: var(--primary-dark);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    @media (min-width: 860px) {
+      .tab-content.active {
+        display: grid;
+        grid-template-columns: 370px 1fr;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .ctrl-item label {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 0.825rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .val-tag {
+      color: var(--primary);
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      outline: none;
+      margin: 0.25rem 0;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .alert-banner {
+      background: var(--danger-bg);
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.775rem;
+      font-weight: 600;
+      display: none;
+    }
+
+    .info-grid {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 0.65rem;
+      font-size: 0.775rem;
+      color: #0369a1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+    }
+
+    .highlight-val {
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #b91c1c;
+      font-family: monospace;
+    }
+
+    .chart-box {
+      margin-bottom: 1rem;
+    }
+
+    .chart-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 250px;
+    }
+
+    @media (min-width: 600px) {
+      .canvas-wrapper { height: 260px; }
+    }
+    /* Mobile-first: controls above plots, readable tab labels and touch targets */
+    .tab-bar { position: sticky; top: 0; z-index: 20; }
+    .tab-btn { min-height: 48px; line-height: 1.35; }
+    .tab-content > *, .tab-content main, .card { min-width: 0; }
+    .tab-content main { display: grid; gap: 0.75rem; }
+    .chart-box { margin-bottom: 0; }
+    input[type="range"] { min-height: 32px; touch-action: pan-y; }
+    select { min-height: 44px; }
+    .challenge { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+      border-radius: 10px; padding: 0.85rem; line-height: 1.6; }
+    .challenge strong { display: block; margin-bottom: .2rem; }
+    .note { font-size: .78rem; color: var(--muted); line-height: 1.55; }
+    @media (max-width: 599px) {
+      body { padding: .45rem; font-size: 14px; }
+      .tab-bar { gap: .15rem; padding: .2rem; }
+      .tab-btn { font-size: .73rem; padding: .45rem .2rem; }
+      .tab-content.active { gap: .65rem; }
+      .card { padding: .75rem; }
+      .canvas-wrapper { height: 230px; }
+      .chart-title { font-size: .8rem; }
+      .chart-title span[style] { font-size: .69rem !important; }
+      .info-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 860px) {
+      .tab-content.active { grid-template-columns: minmax(280px, 370px) minmax(0, 1fr); }
+    }
+    .site-footer {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 0.4rem 1rem; padding: 1.2rem 0.35rem 0.5rem;
+      color: var(--muted); font-size: 0.78rem;
+      border-top: 1px solid var(--border); margin-top: 1.1rem;
+    }
+    .footer-credit { font-weight: 650; letter-spacing: 0.025em; color: #475569; }
+    @media (max-width: 600px) {
+      .site-footer { justify-content: center; text-align: center; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="tab-bar" aria-label="互動實驗單元">
+      <button class="tab-btn active" onclick="switchTab('tab-adc', this)">① ADC 與取樣</button>
+      <button class="tab-btn" onclick="switchTab('tab-filter', this)">② 濾波與 FFT</button>
+      <button class="tab-btn" onclick="switchTab('tab-emg', this)">③ EMG 處理</button>
+    </nav>
+
+    <!-- ================= 單元 1：ADC 取樣與量化 ================= -->
+    <div id="tab-adc" class="tab-content active">
+      <aside class="card control-panel">
+        <div class="ctrl-item">
+          <label>理想 ADC 輸入範圍上限 (V<sub>ref</sub>)</label>
+          <select id="sel-board">
+            <option value="3.3">0–3.3 V（教學模型）</option>
+            <option value="5.0">0–5.0 V（教學模型）</option>
+          </select>
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>輸入訊號振幅 (V<sub>p</sub> 峰值)</span>
+            <span class="val-tag" id="txt-amp">1.5 V</span>
+          </label>
+          <input type="range" id="rng-amp" min="0.1" max="4.0" step="0.1" value="1.5">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>直流偏壓 (DC Offset)</span>
+            <span class="val-tag" id="txt-dc">1.65 V</span>
+          </label>
+          <input type="range" id="rng-dc" min="-0.5" max="4.0" step="0.05" value="1.65">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>ADC 位元數 (Bits)</span>
+            <span class="val-tag" id="txt-bits">2 bits</span>
+          </label>
+          <input type="range" id="rng-bits" min="2" max="10" step="1" value="2">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>取樣頻率 (f<sub>s</sub>)</span>
+            <span class="val-tag" id="txt-fs">30 Hz</span>
+          </label>
+          <input type="range" id="rng-fs" min="5" max="60" step="1" value="30">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>訊號頻率 (f<sub>sig</sub>)</span>
+            <span class="val-tag" id="txt-fsig">5 Hz</span>
+          </label>
+          <input type="range" id="rng-fsig" min="1" max="10" step="1" value="5">
+        </div>
+
+        <div class="ctrl-item">
+          <label for="sel-start">取樣起始時間（比較 Nyquist 臨界點）</label>
+          <select id="sel-start">
+            <option value="0">0 秒</option>
+            <option value="0.01">0.01 秒</option>
+          </select>
+        </div>
+        <div class="note">此處是理想化 ADC 示意；實際 ESP32 的衰減、非線性與有效輸入範圍需依硬體設定確認。</div>
+        <div id="alert-clip" class="alert-banner">
+          ⚠️ 警告：波形超出 0 ~ <span id="txt-limit">3.3</span>V 範圍！發生飽和削頂 (Clipping)。
+        </div>
+
+        <div class="info-grid">
+          <div>量化階數：<b id="txt-levels">4 階</b></div>
+          <div>輸入幅值：<b id="txt-vpp">3.0 Vpp</b></div>
+          <div style="grid-column: span 2; border-top: 1px dashed #bae6fd; padding-top: 0.2rem;">
+            最小刻度解析度 (1 LSB)：<br>
+            <span class="highlight-val" id="txt-lsb">0.8250 V</span> / 階
+          </div>
+          <div style="grid-column: span 2;">
+            電壓擺盪區間：<span id="txt-range" style="font-family: monospace;">0.15V ~ 3.15V</span>
+          </div>
+        </div>
+        <div class="challenge"><strong>課堂挑戰</strong>把訊號設為 5 Hz、取樣率設為 10 Hz，切換取樣起始時間 0 與 0.01 秒。為什麼結果不同？</div>
+      </aside>
+
+      <main>
+        <div class="card chart-box">
+          <div class="chart-title">
+            <span>1. 類比訊號取樣 (時間軸)</span>
+            <span style="font-size:0.75rem; color:#dc2626;">● 紅點：取樣點連線</span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="chart-sample"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-box">
+          <div class="chart-title">
+            <span>2. ADC 量化電壓與截切邊界 (0V ~ V<sub>ref</sub>)</span>
+            <span style="font-size:0.75rem; color:#2563eb;">■ 藍階梯：數位電壓</span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="chart-quant"></canvas>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ================= 單元 2：濾波與真實 FFT 頻譜分析 ================= -->
+    <div id="tab-filter" class="tab-content">
+      <aside class="card control-panel">
+        <div class="ctrl-item">
+          <label>濾波器類型</label>
+          <select id="sel-filter-type">
+            <option value="none">0. 直通 (不濾波 Bypass)</option>
+            <option value="ma">1. 移動平均濾波器 (Moving Average)</option>
+            <option value="lpf" selected>2. 一階低通濾波器 (Low-Pass Filter, LPF)</option>
+            <option value="hpf">3. 一階高通濾波器 (High-Pass Filter, HPF)</option>
+            <option value="bpf">4. 二階帶通濾波器 (Band-Pass Filter, BPF)</option>
+          </select>
+        </div>
+
+        <hr style="border:0; border-top:1px dashed var(--border); margin:0.2rem 0;">
+
+        <!-- 訊號源可控參數 -->
+        <div class="ctrl-item">
+          <label>
+            <span>主訊號頻率 (f<sub>0</sub>)</span>
+            <span class="val-tag" id="txt-f0">8 Hz</span>
+          </label>
+          <input type="range" id="rng-f0" min="4" max="15" step="1" value="8">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>高頻雜訊頻率 (f<sub>noise</sub>)</span>
+            <span class="val-tag" id="txt-fnoise">40 Hz</span>
+          </label>
+          <input type="range" id="rng-fnoise" min="20" max="60" step="2" value="40">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>高頻雜訊振幅</span>
+            <span class="val-tag" id="txt-amp-noise">0.50 V</span>
+          </label>
+          <input type="range" id="rng-amp-noise" min="0.0" max="1.0" step="0.05" value="0.5">
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>低頻基線漂移振幅 (1.5 Hz)</span>
+            <span class="val-tag" id="txt-amp-drift">0.60 V</span>
+          </label>
+          <input type="range" id="rng-amp-drift" min="0.0" max="1.0" step="0.05" value="0.6">
+        </div>
+
+        <hr style="border:0; border-top:1px dashed var(--border); margin:0.2rem 0;">
+
+        <!-- 濾波器專用可調參數區塊 -->
+        <div id="param-ma" class="ctrl-item" style="display:none;">
+          <label>
+            <span>視窗長度 (N 點平均)</span>
+            <span class="val-tag" id="txt-ma-n">N = 7</span>
+          </label>
+          <input type="range" id="rng-ma-n" min="3" max="31" step="2" value="7">
+          <div style="font-size:0.72rem; color:var(--muted);">第一零點頻率位於 f = f<sub>s</sub> / N ≈ <span id="txt-ma-null">17.1</span> Hz。</div>
+        </div>
+
+        <div id="param-lpf" class="ctrl-item">
+          <label>
+            <span>低通截止頻率 (f<sub>c</sub>)</span>
+            <span class="val-tag" id="txt-lpf-fc">12 Hz</span>
+          </label>
+          <input type="range" id="rng-lpf-fc" min="2" max="35" step="1" value="12">
+        </div>
+
+        <div id="param-hpf" class="ctrl-item" style="display:none;">
+          <label>
+            <span>高通截止頻率 (f<sub>c</sub>)</span>
+            <span class="val-tag" id="txt-hpf-fc">4 Hz</span>
+          </label>
+          <input type="range" id="rng-hpf-fc" min="1" max="10" step="0.5" value="4">
+        </div>
+
+        <div id="param-bpf" class="ctrl-item" style="display:none;">
+          <label>
+            <span>帶通低截止 (f<sub>c1</sub>)</span>
+            <span class="val-tag" id="txt-bpf-fc1">4 Hz</span>
+          </label>
+          <input type="range" id="rng-bpf-fc1" min="1" max="6" step="0.5" value="4">
+          <label style="margin-top:0.35rem;">
+            <span>帶通高截止 (f<sub>c2</sub>)</span>
+            <span class="val-tag" id="txt-bpf-fc2">15 Hz</span>
+          </label>
+          <input type="range" id="rng-bpf-fc2" min="10" max="30" step="1" value="15">
+        </div>
+
+        <div class="info-grid">
+          <div>系統取樣率 (f<sub>s</sub>)：<br><b>128 Hz</b></div>
+          <div>頻譜解析度 (Δf)：<br><b>0.5 Hz</b></div>
+          <div style="grid-column: span 2; border-top: 1px dashed #bae6fd; padding-top: 0.2rem;" id="txt-filter-summary">
+            <b>一階低通濾波器 (LPF)：</b><br>
+            • 較少衰減低頻成分，逐漸抑制高頻成分。<br>
+            • 微控制器差分式：y[n] = αx[n] + (1−α)y[n−1]。
+          </div>
+        </div>
+        <div class="challenge"><strong>課堂挑戰</strong>比較 Bypass、低通與高通：哪種濾波器能減少低頻漂移？截止頻率太低會發生什麼事？</div>
+      </aside>
+
+      <main>
+        <div class="card chart-box">
+          <div class="chart-title">
+            <span>時域波形（Time Domain）</span>
+            <span style="font-size:0.75rem;">
+              <span style="color:#94a3b8;">灰色：未濾波原始訊號</span> | 
+              <span style="color:#0284c7; font-weight:bold;">藍色：濾波輸出</span>
+            </span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="chart-filter-time"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-box">
+          <div class="chart-title">
+            <span>頻域頻譜（FFT Amplitude Spectrum, 0 ~ 64 Hz）</span>
+            <span style="font-size:0.75rem;">
+              <span style="color:#cbd5e1;">灰色區域：原始頻譜</span> | 
+              <span style="color:#0284c7; font-weight:bold;">藍色實線：濾波後頻譜</span>
+            </span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="chart-filter-fft"></canvas>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ================= ③ EMG 處理 ================= -->
+    <div id="tab-emg" class="tab-content">
+      <aside class="card control-panel">
+        <div class="ctrl-item">
+          <label>肌肉用力狀態（模擬發力）</label>
+          <select id="sel-emg-state">
+            <option value="pulse">兩次握拳發力 (Pulse Bursts)</option>
+            <option value="sustained">持續用力緊繃 (Sustained)</option>
+            <option value="rest">放鬆靜止狀態 (Rest)</option>
+          </select>
+        </div>
+
+        <div class="ctrl-item">
+          <label>電路直流偏壓 / 基線漂移 <span class="val-tag" id="txt-emg-dc">+1.65 V</span></label>
+          <input type="range" id="rng-emg-dc" min="0.5" max="2.5" step="0.05" value="1.65">
+        </div>
+
+        <hr style="border:0; border-top:1px dashed var(--border); margin:0.3rem 0;">
+
+        <div class="ctrl-item">
+          <label>
+            <span>步驟 1 & 2：去偏壓 + 20–450 Hz 帶通濾波</span>
+            <input type="checkbox" id="chk-emg-bpf" checked style="width:auto;">
+          </label>
+          <div style="font-size:0.72rem; color:var(--muted);">去掉基準電壓與晃動雜訊，讓訊號在 0V 左右對稱。</div>
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>步驟 3：全波整流（取絕對值 |x|）</span>
+            <input type="checkbox" id="chk-emg-rect" checked style="width:auto;">
+          </label>
+          <div style="font-size:0.72rem; color:var(--muted);">將負向振幅翻轉為正值；整流不等於直接測得肌力或能量。</div>
+        </div>
+
+        <div class="ctrl-item">
+          <label>
+            <span>步驟 4：包絡線提取（平滑視窗長度）</span>
+            <span class="val-tag" id="txt-emg-env">W = 25 點（約 21 ms）</span>
+          </label>
+          <input type="range" id="rng-emg-env" min="5" max="55" step="4" value="25">
+          <div style="font-size:0.72rem; color:var(--muted);">估計肌肉活化振幅的變化；可作為控制閾值的輸入特徵。</div>
+        </div>
+
+        <div class="info-grid">
+          <div style="grid-column: span 2;">
+            <b>EMG 前處理核心重點：</b><br>
+            • <b>原始 EMG</b>：高頻雜亂交變訊號，不可直接作為控制量。<br>
+            • <b>整流 + 包絡線</b>：得到肌肉活化振幅指標，經校正、閾值判斷及安全控制後才用於驅動裝置。
+          </div>
+        </div>
+        <div class="note">本單元使用合成的原始 EMG 示意資料，並非 Grove EMG Detector 的實際輸出；Grove 模組已經過類比訊號處理。</div>
+        <div class="challenge"><strong>課堂挑戰</strong>關閉整流，觀察包絡線的變化。為什麼原始 EMG 的瞬時正負電壓不適合直接當作肌力？</div>
+      </aside>
+
+      <main>
+        <div class="card chart-box">
+          <div class="chart-title">
+            <span>階段 1：原始訊號 vs. 去偏壓與帶通濾波後</span>
+            <span style="font-size:0.72rem;">
+              <span style="color:#94a3b8;">灰色：原始訊號</span> | 
+              <span style="color:#0284c7; font-weight:bold;">藍色：帶通訊號</span>
+            </span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="chart-emg-stage1"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-box">
+          <div class="chart-title">
+            <span>階段 2：全波整流 vs. 肌電振幅包絡線</span>
+            <span style="font-size:0.72rem;">
+              <span style="color:#cbd5e1;">細線：全波整流</span> | 
+              <span style="color:#8b5cf6; font-weight:bold;">紫色粗線：EMG 振幅包絡線</span>
+            </span>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="chart-emg-stage2"></canvas>
+          </div>
+        </div>
+      </main>
+    </div>
+    <footer class="site-footer" aria-label="教材作者資訊">
+      <span>Interactive EMG &amp; Signal Processing</span>
+      <span class="footer-credit">CHHsu @ NFU MDE</span>
+    </footer>
+  </div>
+
+  <script>
+    // Tab 切換
+    function switchTab(tabId, button) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      button.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'tab-filter') {
+        renderFilter();
+      } else if (tabId === 'tab-emg') {
+        renderEMG();
+      } else {
+        renderADC();
+      }
+    }
+
+    // ================= 單元 1 邏輯 (ADC) =================
+    const elBoard = document.getElementById('sel-board');
+    const elAmp = document.getElementById('rng-amp');
+    const elDc = document.getElementById('rng-dc');
+    const elBits = document.getElementById('rng-bits');
+    const elFs = document.getElementById('rng-fs');
+    const elFsig = document.getElementById('rng-fsig');
+    const elStart = document.getElementById('sel-start');
+
+    const txtAmp = document.getElementById('txt-amp');
+    const txtDc = document.getElementById('txt-dc');
+    const txtBits = document.getElementById('txt-bits');
+    const txtFs = document.getElementById('txt-fs');
+    const txtFsig = document.getElementById('txt-fsig');
+    const txtLimit = document.getElementById('txt-limit');
+    const txtLevels = document.getElementById('txt-levels');
+    const txtVpp = document.getElementById('txt-vpp');
+    const txtLsb = document.getElementById('txt-lsb');
+    const txtRange = document.getElementById('txt-range');
+    const alertClip = document.getElementById('alert-clip');
+
+    const NUM_PTS = 300;
+    const tContinuous = Array.from({length: NUM_PTS}, (_, i) => i / NUM_PTS);
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      scales: {
+        x: { type: 'linear', min: 0, max: 1.0, ticks: { maxTicksLimit: 6 } },
+        y: { min: -1.0, max: 6.0, ticks: { stepSize: 1.0 } }
+      },
+      plugins: { legend: { display: false } }
+    };
+
+    const chartSample = new Chart(document.getElementById('chart-sample'), {
+      type: 'line',
+      data: {
+        datasets: [
+          { data: [], borderColor: '#94a3b8', borderWidth: 1.5, pointRadius: 0 },
+          { data: [], borderColor: '#dc2626', borderWidth: 1.2, borderDash: [4, 4], pointRadius: 3, pointBackgroundColor: '#dc2626' }
+        ]
+      },
+      options: commonOptions
+    });
+
+    const chartQuant = new Chart(document.getElementById('chart-quant'), {
+      type: 'line',
+      data: {
+        datasets: [
+          { data: [], borderColor: '#cbd5e1', borderWidth: 1, pointRadius: 0 },
+          { data: [], stepped: 'before', borderColor: '#2563eb', borderWidth: 1.8, pointRadius: 2.5, pointBackgroundColor: '#2563eb' },
+          { data: [], borderColor: '#ef4444', borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
+          { data: [], borderColor: '#ef4444', borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 }
+        ]
+      },
+      options: commonOptions
+    });
+
+    elBoard.addEventListener('change', () => {
+      const vref = parseFloat(elBoard.value);
+      elDc.value = (vref / 2.0).toFixed(2);
+      renderADC();
+    });
+
+    function renderADC() {
+      const vref = parseFloat(elBoard.value);
+      const amp = parseFloat(elAmp.value);
+      const dc = parseFloat(elDc.value);
+      const bits = parseInt(elBits.value, 10);
+      const fs = parseFloat(elFs.value);
+      const fsig = parseFloat(elFsig.value);
+      const tStart = parseFloat(elStart.value);
+
+      txtAmp.innerText = `${amp.toFixed(1)} V`;
+      txtDc.innerText = `${dc.toFixed(2)} V`;
+      txtBits.innerText = `${bits} bits`;
+      txtFs.innerText = `${fs} Hz`;
+      txtFsig.innerText = `${fsig} Hz`;
+      txtLimit.innerText = `${vref.toFixed(1)}`;
+
+      const levels = Math.pow(2, bits);
+      txtLevels.innerText = `${levels} 階`;
+      txtVpp.innerText = `${(amp * 2).toFixed(1)} Vpp`;
+
+      const lsb = vref / levels;
+      txtLsb.innerText = `${lsb.toFixed(4)} V`;
+
+      const vMin = dc - amp;
+      const vMax = dc + amp;
+      txtRange.innerText = `${vMin.toFixed(2)}V ~ ${vMax.toFixed(2)}V`;
+
+      alertClip.style.display = ((vMin < 0.0) || (vMax > vref)) ? 'block' : 'none';
+
+      const contData = tContinuous.map(t => ({ x: t, y: dc + amp * Math.sin(2 * Math.PI * fsig * t) }));
+      const sampleData = [];
+      const dt = 1.0 / fs;
+      for (let i = 0; tStart + i * dt <= 1.0 + 1e-10; i++) {
+        const t = tStart + i * dt;
+        sampleData.push({ x: t, y: dc + amp * Math.sin(2 * Math.PI * fsig * t) });
+      }
+
+      const quantData = sampleData.map(p => {
+        let clamped = Math.max(0.0, Math.min(vref, p.y));
+        let code = Math.floor(clamped / lsb);
+        if (code >= levels) code = levels - 1;
+        return { x: p.x, y: (code + 0.5) * lsb };
+      });
+
+      chartSample.data.datasets[0].data = contData;
+      chartSample.data.datasets[1].data = sampleData;
+      chartSample.update();
+
+      chartQuant.data.datasets[0].data = contData;
+      chartQuant.data.datasets[1].data = quantData;
+      chartQuant.data.datasets[2].data = [{ x: 0, y: vref }, { x: 1, y: vref }];
+      chartQuant.data.datasets[3].data = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+      chartQuant.update();
+    }
+
+    [elBoard, elAmp, elDc, elBits, elFs, elFsig, elStart].forEach(el => el.addEventListener('input', renderADC));
+
+    // ================= 單元 2 邏輯 (數位濾波與真實 FFT 頻譜) =================
+    const selFilterType = document.getElementById('sel-filter-type');
+    const elF0 = document.getElementById('rng-f0');
+    const elFnoise = document.getElementById('rng-fnoise');
+    const elAmpNoise = document.getElementById('rng-amp-noise');
+    const elAmpDrift = document.getElementById('rng-amp-drift');
+
+    const txtF0 = document.getElementById('txt-f0');
+    const txtFnoise = document.getElementById('txt-fnoise');
+    const txtAmpNoise = document.getElementById('txt-amp-noise');
+    const txtAmpDrift = document.getElementById('txt-amp-drift');
+
+    const paramMa = document.getElementById('param-ma');
+    const paramLpf = document.getElementById('param-lpf');
+    const paramHpf = document.getElementById('param-hpf');
+    const paramBpf = document.getElementById('param-bpf');
+
+    const elMaN = document.getElementById('rng-ma-n');
+    const txtMaN = document.getElementById('txt-ma-n');
+    const txtMaNull = document.getElementById('txt-ma-null');
+
+    const elLpfFc = document.getElementById('rng-lpf-fc');
+    const txtLpfFc = document.getElementById('txt-lpf-fc');
+
+    const elHpfFc = document.getElementById('rng-hpf-fc');
+    const txtHpfFc = document.getElementById('txt-hpf-fc');
+
+    const elBpfFc1 = document.getElementById('rng-bpf-fc1');
+    const elBpfFc2 = document.getElementById('rng-bpf-fc2');
+    const txtBpfFc1 = document.getElementById('txt-bpf-fc1');
+    const txtBpfFc2 = document.getElementById('txt-bpf-fc2');
+
+    const txtFilterSummary = document.getElementById('txt-filter-summary');
+
+    // FFT 設定：採樣頻率 fs = 128 Hz，分析窗口 N_FFT = 256 點 (T = 2 秒，解析度 Δf = 0.5 Hz)
+    const FS_FILTER = 128.0;
+    const N_FFT = 256;
+    const DT_FILTER = 1.0 / FS_FILTER;
+
+    const chartFilterTime = new Chart(document.getElementById('chart-filter-time'), {
+      type: 'line',
+      data: {
+        datasets: [
+          { label: '未濾波原始訊號', data: [], borderColor: '#94a3b8', borderWidth: 1.2, pointRadius: 0 },
+          { label: '濾波後輸出', data: [], borderColor: '#0284c7', borderWidth: 2, pointRadius: 0 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: { type: 'linear', min: 0, max: 2.0, title: { display: true, text: '時間 (秒)' } },
+          y: { min: -2.8, max: 2.8, title: { display: true, text: '振幅 (V)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    const chartFilterFFT = new Chart(document.getElementById('chart-filter-fft'), {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: '原始頻譜',
+            data: [],
+            borderColor: '#94a3b8',
+            backgroundColor: 'rgba(148, 163, 184, 0.25)',
+            borderWidth: 1,
+            fill: true,
+            pointRadius: 0
+          },
+          {
+            label: '濾波後頻譜',
+            data: [],
+            borderColor: '#0284c7',
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: { type: 'linear', min: 0, max: 64, title: { display: true, text: '頻率 (Hz) [最高到 Nyquist 64 Hz]' } },
+          y: { min: 0, max: 1.2, title: { display: true, text: '振幅 (V)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // 實數離散傅立葉轉換 (DFT) 運算振幅頻譜
+    function computeSpectrum(samples) {
+      const spectrum = [];
+      const halfN = N_FFT / 2;
+      for (let k = 0; k <= halfN; k++) {
+        let real = 0.0;
+        let imag = 0.0;
+        const angle = (2 * Math.PI * k) / N_FFT;
+        for (let n = 0; n < N_FFT; n++) {
+          real += samples[n] * Math.cos(angle * n);
+          imag -= samples[n] * Math.sin(angle * n);
+        }
+        // 振幅正規化：DC (k=0) 與 Nyquist 除以 N，其餘乘 2/N
+        let mag = Math.sqrt(real * real + imag * imag) / N_FFT;
+        if (k > 0 && k < halfN) mag *= 2.0;
+
+        const freq = (k * FS_FILTER) / N_FFT;
+        spectrum.push({ x: freq, y: mag });
+      }
+      return spectrum;
+    }
+
+    function updateFilterControls() {
+      const type = selFilterType.value;
+      paramMa.style.display = (type === 'ma') ? 'block' : 'none';
+      paramLpf.style.display = (type === 'lpf') ? 'block' : 'none';
+      paramHpf.style.display = (type === 'hpf') ? 'block' : 'none';
+      paramBpf.style.display = (type === 'bpf') ? 'block' : 'none';
+
+      if (type === 'none') {
+        txtFilterSummary.innerHTML = '<b>直通模式 (Bypass)：</b><br>未啟動任何濾波器，觀察所有頻率成分在時域與頻域中的完整分佈。';
+      } else if (type === 'ma') {
+        txtFilterSummary.innerHTML = '<b>移動平均 (Moving Average)：</b><br>• 時域取鄰近 N 點算術平均。<br>• 頻域呈現 Sinc 衰減，在 f = k × f<sub>s</sub> / N 處出現陷波零點 (Nulls)。';
+      } else if (type === 'lpf') {
+        txtFilterSummary.innerHTML = '<b>一階低通濾波 (LPF)：</b><br>• 保留 低於 f<sub>c</sub> 頻率，對 高於 f<sub>c</sub> 以 -20 dB/dec 衰減。<br>• 權重係數：α = (2πf<sub>c</sub>Δt) / (2πf<sub>c</sub>Δt + 1)。';
+      } else if (type === 'hpf') {
+        txtFilterSummary.innerHTML = '<b>一階高通濾波 (HPF)：</b><br>• 濾除 低於 f<sub>c</sub> 的基線漂移與慢變雜訊，保留高頻訊號。<br>• 差分方程式：y[n] = α(y[n−1] + x[n] − x[n−1])。';
+      } else if (type === 'bpf') {
+        txtFilterSummary.innerHTML = '<b>二階帶通濾波 (BPF)：</b><br>• 串聯 HPF (f<sub>c1</sub>) 與 LPF (f<sub>c2</sub>)，只放行通帶窗口內的信號。<br>• 常用於生醫訊號 (EMG/ECG) 前處理，同時清除漂移與高頻雜波。';
+      }
+    }
+
+    function renderFilter() {
+      updateFilterControls();
+
+      const f0 = parseFloat(elF0.value);
+      const fnoise = parseFloat(elFnoise.value);
+      const ampNoise = parseFloat(elAmpNoise.value);
+      const ampDrift = parseFloat(elAmpDrift.value);
+      const type = selFilterType.value;
+
+      txtF0.innerText = `${f0} Hz`;
+      txtFnoise.innerText = `${fnoise} Hz`;
+      txtAmpNoise.innerText = `${ampNoise.toFixed(2)} V`;
+      txtAmpDrift.innerText = `${ampDrift.toFixed(2)} V`;
+
+      // 產生 256 點測試訊號 (長度 2 秒)
+      // 包含：低頻漂移 (1.5 Hz) + 主訊號 (f0 Hz, 1.0 V) + 高頻雜訊 (fnoise Hz)
+      const rawSamples = [];
+      const rawTimeData = [];
+      for (let n = 0; n < N_FFT; n++) {
+        let t = n * DT_FILTER;
+        let vDrift = ampDrift * Math.sin(2 * Math.PI * 1.5 * t);
+        let vSignal = 1.0 * Math.sin(2 * Math.PI * f0 * t);
+        let vNoise = ampNoise * Math.sin(2 * Math.PI * fnoise * t);
+        let total = vDrift + vSignal + vNoise;
+        rawSamples.push(total);
+        rawTimeData.push({ x: t, y: total });
+      }
+
+      // 執行濾波處理
+      const filteredSamples = [];
+
+      if (type === 'none') {
+        rawSamples.forEach(v => filteredSamples.push(v));
+
+      } else if (type === 'ma') {
+        const N = parseInt(elMaN.value, 10);
+        txtMaN.innerText = `N = ${N}`;
+        txtMaNull.innerText = (FS_FILTER / N).toFixed(1);
+
+        const half = Math.floor(N / 2);
+        for (let i = 0; i < N_FFT; i++) {
+          let sum = 0, count = 0;
+          for (let k = -half; k <= half; k++) {
+            let idx = i + k;
+            if (idx >= 0 && idx < N_FFT) {
+              sum += rawSamples[idx];
+              count++;
+            }
+          }
+          filteredSamples.push(sum / count);
+        }
+
+      } else if (type === 'lpf') {
+        const fc = parseFloat(elLpfFc.value);
+        txtLpfFc.innerText = `${fc} Hz`;
+        const rc = 1.0 / (2 * Math.PI * fc);
+        const alpha = DT_FILTER / (rc + DT_FILTER);
+
+        let yPrev = rawSamples[0];
+        for (let i = 0; i < N_FFT; i++) {
+          let yCurr = alpha * rawSamples[i] + (1 - alpha) * yPrev;
+          filteredSamples.push(yCurr);
+          yPrev = yCurr;
+        }
+
+      } else if (type === 'hpf') {
+        const fc = parseFloat(elHpfFc.value);
+        txtHpfFc.innerText = `${fc} Hz`;
+        const rc = 1.0 / (2 * Math.PI * fc);
+        const alpha = rc / (rc + DT_FILTER);
+
+        let yPrev = 0.0;
+        let xPrev = rawSamples[0];
+        for (let i = 0; i < N_FFT; i++) {
+          let yCurr = alpha * (yPrev + rawSamples[i] - xPrev);
+          filteredSamples.push(yCurr);
+          yPrev = yCurr;
+          xPrev = rawSamples[i];
+        }
+
+      } else if (type === 'bpf') {
+        const fc1 = parseFloat(elBpfFc1.value);
+        const fc2 = parseFloat(elBpfFc2.value);
+        txtBpfFc1.innerText = `${fc1} Hz`;
+        txtBpfFc2.innerText = `${fc2} Hz`;
+
+        // 串聯 HPF (fc1) 與 LPF (fc2)
+        const rc1 = 1.0 / (2 * Math.PI * fc1);
+        const alpha1 = rc1 / (rc1 + DT_FILTER);
+
+        const rc2 = 1.0 / (2 * Math.PI * fc2);
+        const alpha2 = DT_FILTER / (rc2 + DT_FILTER);
+
+        let yHpPrev = 0.0, xPrev = rawSamples[0];
+        let hpOut = [];
+        for (let i = 0; i < N_FFT; i++) {
+          let yHp = alpha1 * (yHpPrev + rawSamples[i] - xPrev);
+          hpOut.push(yHp);
+          yHpPrev = yHp;
+          xPrev = rawSamples[i];
+        }
+
+        let yLpPrev = hpOut[0];
+        for (let i = 0; i < N_FFT; i++) {
+          let yBp = alpha2 * hpOut[i] + (1 - alpha2) * yLpPrev;
+          filteredSamples.push(yBp);
+          yLpPrev = yBp;
+        }
+      }
+
+      const filteredTimeData = filteredSamples.map((v, i) => ({ x: i * DT_FILTER, y: v }));
+
+      // 計算未濾波與濾波後的真實 FFT 振幅頻譜
+      const rawSpectrum = computeSpectrum(rawSamples);
+      const filteredSpectrum = computeSpectrum(filteredSamples);
+
+      // 更新時域圖
+      chartFilterTime.data.datasets[0].data = rawTimeData;
+      chartFilterTime.data.datasets[1].data = filteredTimeData;
+      chartFilterTime.update();
+
+      // 更新頻譜圖
+      chartFilterFFT.data.datasets[0].data = rawSpectrum;
+      chartFilterFFT.data.datasets[1].data = filteredSpectrum;
+      chartFilterFFT.update();
+    }
+
+    [selFilterType, elF0, elFnoise, elAmpNoise, elAmpDrift, elMaN, elLpfFc, elHpfFc, elBpfFc1, elBpfFc2].forEach(el => {
+      el.addEventListener('input', renderFilter);
+    });
+
+    // ================= 單元 3 邏輯 (EMG 處理實務) =================
+    const elEmgState = document.getElementById('sel-emg-state');
+    const elEmgDc = document.getElementById('rng-emg-dc');
+    const chkEmgBpf = document.getElementById('chk-emg-bpf');
+    const chkEmgRect = document.getElementById('chk-emg-rect');
+    const elEmgEnv = document.getElementById('rng-emg-env');
+
+    const txtEmgDc = document.getElementById('txt-emg-dc');
+    const txtEmgEnv = document.getElementById('txt-emg-env');
+
+    const chartEmgStage1 = new Chart(document.getElementById('chart-emg-stage1'), {
+      type: 'line',
+      data: {
+        datasets: [
+          { label: '原始 ADC 電壓', data: [], borderColor: '#94a3b8', borderWidth: 1, pointRadius: 0 },
+          { label: '帶通訊號', data: [], borderColor: '#0284c7', borderWidth: 1.5, pointRadius: 0 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: { type: 'linear', min: 0, max: 2.0, title: { display: true, text: '時間 (秒)' } },
+          y: { min: -1.5, max: 3.5, title: { display: true, text: '電壓 (V)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    const chartEmgStage2 = new Chart(document.getElementById('chart-emg-stage2'), {
+      type: 'line',
+      data: {
+        datasets: [
+          { label: '全波整流 (|x|)', data: [], borderColor: 'rgba(148,163,184,0.38)', borderWidth: 0.7, pointRadius: 0, order: 2 },
+          { label: 'EMG 振幅包絡線', data: [], borderColor: '#7c3aed', backgroundColor: '#7c3aed', borderWidth: 3.5, pointRadius: 0, order: 1 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: { type: 'linear', min: 0, max: 2.0, title: { display: true, text: '時間 (秒)' } },
+          y: { min: 0.0, max: 2.0, title: { display: true, text: '相對振幅 (V)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    const EMG_FS = 1200;
+    const EMG_PTS = 2 * EMG_FS;
+    const tEmg = Array.from({length: EMG_PTS}, (_, i) => i / EMG_FS);
+    const emgCarrier = tEmg.map(t => {
+      return (
+        0.5 * Math.sin(2 * Math.PI * 65 * t) +
+        0.3 * Math.sin(2 * Math.PI * 135 * t + 1.2) +
+        0.2 * Math.sin(2 * Math.PI * 220 * t + 2.1) +
+        0.15 * Math.sin(2 * Math.PI * 340 * t + 0.5)
+      );
+    });
+
+    // 二階 Butterworth-like biquad sections (Q=1/sqrt(2)), causal filtering.
+    // At 1200 Hz sampling, 450 Hz high cutoff is below the 600 Hz Nyquist limit.
+    function biquadFilter(samples, fc, type, fs) {
+      const omega = 2 * Math.PI * fc / fs;
+      const c = Math.cos(omega), si = Math.sin(omega);
+      const alpha = si / Math.sqrt(2);
+      let b0, b1, b2;
+      if (type === 'highpass') {
+        b0 = (1+c)/2; b1 = -(1+c); b2 = (1+c)/2;
+      } else {
+        b0 = (1-c)/2; b1 = 1-c; b2 = (1-c)/2;
+      }
+      const a0 = 1+alpha, a1 = -2*c, a2 = 1-alpha;
+      let x1=0, x2=0, y1=0, y2=0;
+      return samples.map(x => {
+        const y = (b0*x+b1*x1+b2*x2-a1*y1-a2*y2)/a0;
+        x2=x1; x1=x; y2=y1; y1=y;
+        return y;
+      });
+    }
+
+    function renderEMG() {
+      const state = elEmgState.value;
+      const dcOffset = parseFloat(elEmgDc.value);
+      const applyBpf = chkEmgBpf.checked;
+      const applyRect = chkEmgRect.checked;
+      const winSize = parseInt(elEmgEnv.value, 10);
+
+      txtEmgDc.innerText = `+${dcOffset.toFixed(2)} V`;
+      txtEmgEnv.innerText = `W = ${winSize} 點（${(winSize / EMG_FS * 1000).toFixed(0)} ms）`;
+
+      const activation = tEmg.map(t => {
+        if (state === 'pulse') {
+          let act1 = Math.exp(-Math.pow((t - 0.5) / 0.15, 2));
+          let act2 = Math.exp(-Math.pow((t - 1.4) / 0.15, 2));
+          return Math.max(0.05, Math.max(act1, act2));
+        } else if (state === 'sustained') {
+          return (t >= 0.4 && t <= 1.6) ? 0.9 : 0.08;
+        } else {
+          return 0.05;
+        }
+      });
+
+      const rawData = [];
+      for (let i = 0; i < EMG_PTS; i++) {
+        let t = tEmg[i];
+        let baselineWander = 0.25 * Math.sin(2 * Math.PI * 1.5 * t);
+        let rawVolt = dcOffset + baselineWander + emgCarrier[i] * activation[i] * 1.5;
+        rawData.push({ x: t, y: rawVolt });
+      }
+
+      const centered = rawData.map(p => p.y - dcOffset);
+      const processed = applyBpf
+        ? biquadFilter(biquadFilter(centered, 20, 'highpass', EMG_FS), 450, 'lowpass', EMG_FS)
+        : rawData.map(p => p.y);
+      const bpfData = processed.map((y,i) => ({x:tEmg[i],y}));
+
+      const rectData = [];
+      for (let i = 0; i < EMG_PTS; i++) {
+        let val = bpfData[i].y;
+        let rVal = applyRect ? Math.abs(val) : val;
+        rectData.push({ x: tEmg[i], y: rVal });
+      }
+
+      const envData = [];
+      const half = Math.floor(winSize / 2);
+      for (let i = 0; i < EMG_PTS; i++) {
+        let sum = 0, count = 0;
+        for (let k = -half; k <= half; k++) {
+          let idx = i + k;
+          if (idx >= 0 && idx < EMG_PTS) {
+            sum += rectData[idx].y;
+            count++;
+          }
+        }
+        envData.push({ x: tEmg[i], y: sum / count });
+      }
+
+      chartEmgStage1.data.datasets[0].data = rawData;
+      chartEmgStage1.data.datasets[1].data = bpfData;
+      chartEmgStage1.update();
+
+      chartEmgStage2.data.datasets[0].data = rectData;
+      chartEmgStage2.data.datasets[1].data = envData;
+      chartEmgStage2.update();
+    }
+
+    [elEmgState, elEmgDc, chkEmgBpf, chkEmgRect, elEmgEnv].forEach(el => {
+      el.addEventListener('input', renderEMG);
+    });
+
+    renderADC();
+    window.addEventListener('resize', () => {
+      [chartSample,chartQuant,chartFilterTime,chartFilterFFT,chartEmgStage1,chartEmgStage2].forEach(c => c.resize());
+    });
+  </script>
+</body>
+</html>
