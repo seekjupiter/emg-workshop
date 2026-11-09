@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EMG 與訊號處理｜互動實驗室</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -217,6 +217,7 @@
 
     .ctrl-item label.plain-label { display:block; line-height:1.5; }
     .diff-experiment { grid-column: 1 / -1; }
+    #tab-diff.active {display:block;}
     .diff-grid { display:grid; grid-template-columns: minmax(0, 260px) minmax(0,1fr); gap:1rem; align-items:start; }
     .diff-controls { display:flex; flex-direction:column; gap:.8rem; }
     .diff-choices { display:flex; gap:.4rem; flex-wrap:wrap; }
@@ -235,18 +236,78 @@
     @media (max-width: 600px) {
       .site-footer { justify-content: center; text-align: center; flex-direction: column; }
     }
+
+/* Guided lesson: compact teaching controls */
+.lesson-guide {background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:.8rem;margin-bottom:.8rem}
+.lesson-guide h2 {margin:0 0 .5rem;font-size:1rem;color:#075985}
+.lesson-steps {display:flex;gap:.35rem;flex-wrap:wrap}
+.lesson-step {border:1px solid #cbd5e1;border-radius:8px;background:white;color:#334155;padding:.55rem .65rem;cursor:pointer;font-weight:600;font-size:.8rem}
+.lesson-step.active {background:#0284c7;color:white;border-color:#0284c7}
+.lesson-task {margin:.6rem 0 0;color:#334155;line-height:1.55;font-size:.85rem}
+.lesson-actions {display:flex;gap:.5rem;align-items:center;margin-top:.55rem;flex-wrap:wrap}
+.lesson-actions button {background:#fff;border:1px solid #94a3b8;border-radius:7px;padding:.4rem .7rem;cursor:pointer;color:#075985}
+.lesson-actions .next {background:#0284c7;color:white;border-color:#0284c7}
+@media(max-width:600px){.lesson-step{flex:1 1 45%}.lesson-guide{padding:.65rem}}
+
   </style>
 </head>
 <body>
   <div class="container">
+
+    <section class="lesson-guide" aria-label="課堂操作導覽">
+      <h2>課堂互動導覽｜跟著投影片做實驗</h2>
+      <div class="lesson-steps">
+        <button class="lesson-step" data-lesson="diff" onclick="goLesson('diff')">① 雜訊與差動</button>
+        <button class="lesson-step" data-lesson="bits" onclick="goLesson('bits')">② ADC 量化</button>
+        <button class="lesson-step" data-lesson="sample" onclick="goLesson('sample')">③ 取樣與混疊</button>
+        <button class="lesson-step" data-lesson="filter" onclick="goLesson('filter')">④ 濾波與 FFT</button>
+        <button class="lesson-step" data-lesson="emg" onclick="goLesson('emg')">⑤ EMG 包絡</button>
+      </div>
+      <p class="lesson-task" id="lesson-task" aria-live="polite">點選教學步驟，網頁會自動切換分頁並設定示範參數。</p>
+      <div class="lesson-actions"><button onclick="goLessonPrev()">上一個實驗</button><button class="next" onclick="goLessonNext()">下一個實驗 →</button><span class="note">可自由修改參數；切換步驟會載入預設值。</span></div>
+    </section>
     <nav class="tab-bar" aria-label="互動實驗單元">
-      <button class="tab-btn active" onclick="switchTab('tab-adc', this)">① ADC 與取樣</button>
-      <button class="tab-btn" onclick="switchTab('tab-filter', this)">② 濾波與 FFT</button>
-      <button class="tab-btn" onclick="switchTab('tab-emg', this)">③ EMG 處理</button>
+      <button class="tab-btn active" onclick="switchTab('tab-diff', this)">① 雜訊與差動</button>
+      <button class="tab-btn" onclick="switchTab('tab-adc', this)">② ADC 與取樣</button>
+      <button class="tab-btn" onclick="switchTab('tab-filter', this)">③ 濾波與 FFT</button>
+      <button class="tab-btn" onclick="switchTab('tab-emg', this)">④ EMG 處理</button>
     </nav>
 
+    <!-- 單元 0：獨立的差動量測實驗 -->
+    <div id="tab-diff" class="tab-content active">
+    <!-- 單端與差動量測：獨立互動區塊，仍屬於第一單元 -->
+    <section class="card diff-experiment" id="diff-experiment" aria-label="單端與差動量測比較">
+      <div class="chart-title"><span>實驗 ①：單端 vs. 差動量測</span><span style="font-size:.75rem;color:var(--muted)">調整共模干擾，觀察輸出差異</span></div>
+      <div class="diff-grid">
+        <div class="diff-controls">
+          <div class="diff-choices" role="radiogroup" aria-label="量測方式">
+            <label><input type="radio" name="diff-mode" value="single" checked>單端量測</label>
+            <label><input type="radio" name="diff-mode" value="diff">差動量測</label>
+          </div>
+          <div class="ctrl-item">
+            <label for="diff-noise">共同干擾振幅 <span class="val-tag" id="diff-noise-value">0.5 V</span></label>
+            <input type="range" id="diff-noise" min="0" max="1" step="0.05" value="0.5">
+          </div>
+          <div class="diff-explain" id="diff-readout" aria-live="polite"></div>
+        </div>
+        <div>
+          <svg id="diff-svg" class="diff-plot" viewBox="0 0 640 220" role="img" aria-label="單端與差動量測的時間波形比較">
+            <g id="diff-gridlines"></g>
+            <path id="diff-ideal" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4"></path>
+            <path id="diff-measured" fill="none" stroke="#7c3aed" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>
+            <text x="15" y="18" font-size="13" fill="#475569">灰虛線：理想目標訊號　紫線：量測結果</text>
+            <text x="15" y="207" font-size="12" fill="#64748b">時間（示意）</text>
+          </svg>
+          <div class="note" style="margin-top:.5rem">教學用理想模型：兩端受到相同共模干擾時，理想差動相減可將其抵消。實際抑制效果受 CMRR、電極接觸阻抗及電路限制影響。</div>
+        </div>
+      </div>
+      <div class="challenge" style="margin-top:.8rem"><strong>課堂挑戰</strong>把共同干擾調到 1.0 V，切換單端／差動量測。為什麼兩者差異這麼大？差動放大器與差動 ADC 是同一個元件嗎？</div>
+      <div class="note" style="margin-top:.7rem">EMG 典型流程：兩個量測電極 → 差動式儀表放大器與訊號調理 → 加入適當偏壓 → ESP32／Arduino 單端 ADC。具差動輸入的外接 ADC 是另一種硬體選擇。此圖為簡化的量測原理示意。</div>
+    </section>
+    </div>
+
     <!-- ================= 單元 1：ADC 取樣與量化 ================= -->
-    <div id="tab-adc" class="tab-content active">
+    <div id="tab-adc" class="tab-content">
       <aside class="card control-panel">
         <div class="ctrl-item">
           <label class="plain-label" for="sel-board">理想 ADC 輸入範圍上限（V<sub>ref</sub>）</label>
@@ -277,7 +338,7 @@
             <span>ADC 位元數 (Bits)</span>
             <span class="val-tag" id="txt-bits">2 bits</span>
           </label>
-          <input type="range" id="rng-bits" min="2" max="10" step="1" value="2">
+          <input type="range" id="rng-bits" min="2" max="8" step="1" value="2">
         </div>
 
         <div class="ctrl-item">
@@ -297,13 +358,13 @@
         </div>
 
         <div class="ctrl-item">
-          <label for="sel-start">取樣起始時間（比較 Nyquist 臨界點）</label>
+          <label for="sel-start">取樣起始時間（看看取樣點怎麼變）</label>
           <select id="sel-start">
             <option value="0">0 秒</option>
             <option value="0.01">0.01 秒</option>
           </select>
         </div>
-        <div class="note">此處是理想化 ADC 示意；實際 ESP32 的衰減、非線性與有效輸入範圍需依硬體設定確認。</div>
+        <div class="note">先試 2-bit，再試 4-bit、6-bit、8-bit。位元數越多，電壓分級越細，波形越接近原始訊號。8-bit 的差異可能已不明顯，觀察到趨勢就可以。這是教學用的理想化 ADC 示意。</div>
         <div id="alert-clip" class="alert-banner">
           ⚠️ 警告：波形超出 0 ~ <span id="txt-limit">3.3</span>V 範圍！發生飽和削頂 (Clipping)。
         </div>
@@ -312,14 +373,14 @@
           <div>量化階數：<b id="txt-levels">4 階</b></div>
           <div>輸入幅值：<b id="txt-vpp">3.0 Vpp</b></div>
           <div style="grid-column: span 2; border-top: 1px dashed #bae6fd; padding-top: 0.2rem;">
-            最小刻度解析度 (1 LSB)：<br>
-            <span class="highlight-val" id="txt-lsb">0.8250 V</span> / 階
+            每一階約相差：<br>
+            <span class="highlight-val" id="txt-lsb">0.8250 V</span>
           </div>
           <div style="grid-column: span 2;">
             電壓擺盪區間：<span id="txt-range" style="font-family: monospace;">0.15V ~ 3.15V</span>
           </div>
         </div>
-        <div class="challenge"><strong>課堂挑戰</strong>把訊號設為 5 Hz、取樣率設為 10 Hz，切換取樣起始時間 0 與 0.01 秒。為什麼結果不同？</div>
+        <div class="challenge"><strong>課堂挑戰</strong>先把位元數從 2 調到 8，看看藍線怎麼變；再將取樣頻率從 10 Hz 調到 30 Hz，比較紅點多寡。</div>
       </aside>
 
       <main>
@@ -335,44 +396,17 @@
 
         <div class="card chart-box">
           <div class="chart-title">
-            <span>2. ADC 量化電壓與截切邊界 (0V ~ V<sub>ref</sub>)</span>
-            <span style="font-size:0.75rem; color:#2563eb;">■ 藍階梯：數位電壓</span>
+            <span>2. ADC 量化後的取樣值與截切邊界 (0V ~ V<sub>ref</sub>)</span>
+            <span style="font-size:0.75rem; color:#2563eb;">● 藍點／藍折線：量化後的取樣值</span>
           </div>
           <div class="canvas-wrapper">
             <canvas id="chart-quant"></canvas>
           </div>
         </div>
+        </div>
       </main>
 
-    <!-- 單端與差動量測：獨立互動區塊，仍屬於第一單元 -->
-    <section class="card diff-experiment" id="diff-experiment" aria-label="單端與差動量測比較">
-      <div class="chart-title"><span>延伸實驗：單端 vs. 差動量測</span><span style="font-size:.75rem;color:var(--muted)">調整共模干擾，觀察輸出差異</span></div>
-      <div class="diff-grid">
-        <div class="diff-controls">
-          <div class="diff-choices" role="radiogroup" aria-label="量測方式">
-            <label><input type="radio" name="diff-mode" value="single" checked>單端量測</label>
-            <label><input type="radio" name="diff-mode" value="diff">差動量測</label>
-          </div>
-          <div class="ctrl-item">
-            <label for="diff-noise">共同干擾振幅 <span class="val-tag" id="diff-noise-value">0.5 V</span></label>
-            <input type="range" id="diff-noise" min="0" max="1" step="0.05" value="0.5">
-          </div>
-          <div class="diff-explain" id="diff-readout" aria-live="polite"></div>
-        </div>
-        <div>
-          <svg id="diff-svg" class="diff-plot" viewBox="0 0 640 220" role="img" aria-label="單端與差動量測的時間波形比較">
-            <g id="diff-gridlines"></g>
-            <path id="diff-ideal" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4"></path>
-            <path id="diff-measured" fill="none" stroke="#7c3aed" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>
-            <text x="15" y="18" font-size="13" fill="#475569">灰虛線：理想目標訊號　紫線：量測結果</text>
-            <text x="15" y="207" font-size="12" fill="#64748b">時間（示意）</text>
-          </svg>
-          <div class="note" style="margin-top:.5rem">教學用理想模型：兩端受到相同共模干擾時，理想差動相減可將其抵消。實際抑制效果受 CMRR、電極接觸阻抗及電路限制影響。</div>
-        </div>
-      </div>
-      <div class="challenge" style="margin-top:.8rem"><strong>課堂挑戰</strong>把共同干擾調到 1.0 V，切換單端／差動量測。為什麼兩者差異這麼大？差動放大器與差動 ADC 是同一個元件嗎？</div>
-      <div class="note" style="margin-top:.7rem">EMG 典型流程：兩個量測電極 → 差動式儀表放大器與訊號調理 → 加入適當偏壓 → ESP32／Arduino 單端 ADC。具差動輸入的外接 ADC 是另一種硬體選擇。本示意不代表 Grove 模組的完整內部電路。</div>
-    </section>
+
     </div>
 
     <!-- ================= 單元 2：濾波與真實 FFT 頻譜分析 ================= -->
@@ -557,7 +591,7 @@
             • <b>整流 + 包絡線</b>：得到肌肉活化振幅指標，經校正、閾值判斷及安全控制後才用於驅動裝置。
           </div>
         </div>
-        <div class="note">本單元使用合成的原始 EMG 示意資料，並非 Grove EMG Detector 的實際輸出；Grove 模組已經過類比訊號處理。</div>
+        <div class="note">本單元使用虛擬 EMG 訊號，方便觀察不同處理步驟對波形的影響。</div>
         <div class="challenge"><strong>課堂挑戰</strong>關閉整流，觀察包絡線的變化。為什麼原始 EMG 的瞬時正負電壓不適合直接當作肌力？</div>
       </aside>
 
@@ -664,7 +698,7 @@
       data: {
         datasets: [
           { data: [], borderColor: '#cbd5e1', borderWidth: 1, pointRadius: 0 },
-          { data: [], stepped: 'before', borderColor: '#2563eb', borderWidth: 1.8, pointRadius: 2.5, pointBackgroundColor: '#2563eb' },
+          { data: [], borderColor: '#2563eb', borderWidth: 1.6, pointRadius: 2.8, pointBackgroundColor: '#2563eb' },
           { data: [], borderColor: '#ef4444', borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
           { data: [], borderColor: '#ef4444', borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 }
         ]
@@ -730,7 +764,10 @@
       chartQuant.data.datasets[1].data = quantData;
       chartQuant.data.datasets[2].data = [{ x: 0, y: vref }, { x: 1, y: vref }];
       chartQuant.data.datasets[3].data = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+      chartQuant.options.scales.y.min = -0.1;
+      chartQuant.options.scales.y.max = vref + 0.1;
       chartQuant.update();
+
     }
 
     [elBoard, elAmp, elDc, elBits, elFs, elFsig, elStart].forEach(el => el.addEventListener('input', renderADC));
@@ -1187,6 +1224,53 @@
     window.addEventListener('resize', () => {
       [chartSample,chartQuant,chartFilterTime,chartFilterFFT,chartEmgStage1,chartEmgStage2].forEach(c => c.resize());
     });
+
+    // 課堂導覽：投影片可連結到 #diff、#bits、#sample、#filter、#emg
+    const lessonOrder=['diff','bits','sample','filter','emg'];
+    const lessonTasks={
+      diff:'將共模干擾設為 1.0 V，切換單端與差動。觀察兩條曲線的差異。理想模型不代表實際 CMRR。',
+      bits:'依序切換 2、4、6、8-bit，觀察藍色波形逐漸接近灰色原始波形。高位元數差異不明顯是正常的。',
+      sample:'設定訊號 5 Hz、取樣 10 Hz；切換起始時間 0 與 0.01 秒，觀察取樣點是否能呈現原始波形。再改成 30 Hz 比較。',
+      filter:'先選 Bypass，觀察低頻漂移與高頻雜訊；再切換 HPF、LPF，對照時域與 FFT 頻譜。',
+      emg:'先看兩次發力，切換整流並調整包絡視窗；再比較持續用力與放鬆。本實驗使用虛擬 EMG 訊號。'
+    };
+    let activeLesson='diff';
+    function setValue(id,value){const e=document.getElementById(id);if(e)e.value=value;}
+    function goLesson(key,scroll=true){
+      if(!lessonOrder.includes(key))key='diff';
+      activeLesson=key;
+      document.querySelectorAll('.lesson-step').forEach(b=>b.classList.toggle('active',b.dataset.lesson===key));
+      document.getElementById('lesson-task').textContent=lessonTasks[key];
+      const tab=(key==='diff')?'tab-diff':(key==='filter')?'tab-filter':(key==='emg')?'tab-emg':'tab-adc';
+      const btn=document.querySelector('.tab-btn[onclick*="'+tab+'"]');
+      if(btn)switchTab(tab,btn);
+      if(key==='diff'){
+        setValue('diff-noise','1');
+        document.querySelector('input[name="diff-mode"][value="single"]').checked=true;
+        renderDifferential();
+      } else if(key==='bits'){
+        setValue('sel-board','3.3');setValue('rng-amp','1.5');setValue('rng-dc','1.65');
+        setValue('rng-bits','2');setValue('rng-fs','30');setValue('rng-fsig','5');setValue('sel-start','0');renderADC();
+      } else if(key==='sample'){
+        setValue('sel-board','3.3');setValue('rng-amp','1.5');setValue('rng-dc','1.65');
+        setValue('rng-bits','8');setValue('rng-fs','10');setValue('rng-fsig','5');setValue('sel-start','0');renderADC();
+      } else if(key==='filter'){
+        setValue('sel-filter-type','none');renderFilter();
+      } else if(key==='emg'){
+        setValue('sel-emg-state','pulse');document.getElementById('chk-emg-bpf').checked=true;
+        document.getElementById('chk-emg-rect').checked=true;setValue('rng-emg-env','25');renderEMG();
+      }
+      if(scroll){
+        const target=key==='diff'?document.getElementById('diff-experiment'):document.querySelector('#'+tab+' .control-panel');
+        if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+      history.replaceState(null,'','#'+key);
+    }
+    function goLessonPrev(){goLesson(lessonOrder[Math.max(0,lessonOrder.indexOf(activeLesson)-1)]);}
+    function goLessonNext(){goLesson(lessonOrder[Math.min(lessonOrder.length-1,lessonOrder.indexOf(activeLesson)+1)]);}
+    goLesson(lessonOrder.includes(location.hash.slice(1))?location.hash.slice(1):'diff',false);
+    window.addEventListener('hashchange',()=>{const key=location.hash.slice(1);if(lessonOrder.includes(key))goLesson(key);});
+
   </script>
 </body>
 </html>
