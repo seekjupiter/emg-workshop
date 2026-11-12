@@ -258,10 +258,11 @@
       <h2>課堂互動導覽｜跟著投影片做實驗</h2>
       <div class="lesson-steps">
         <button class="lesson-step" data-lesson="diff" onclick="goLesson('diff')">① 雜訊與差動</button>
-        <button class="lesson-step" data-lesson="bits" onclick="goLesson('bits')">② ADC 量化</button>
-        <button class="lesson-step" data-lesson="sample" onclick="goLesson('sample')">③ 取樣與混疊</button>
-        <button class="lesson-step" data-lesson="filter" onclick="goLesson('filter')">④ 濾波與 FFT</button>
-        <button class="lesson-step" data-lesson="emg" onclick="goLesson('emg')">⑤ EMG 包絡</button>
+        <button class="lesson-step" data-lesson="amp" onclick="goLesson('amp')">② EMG 放大與 ADC</button>
+        <button class="lesson-step" data-lesson="bits" onclick="goLesson('bits')">③ ADC 量化</button>
+        <button class="lesson-step" data-lesson="sample" onclick="goLesson('sample')">④ 取樣與混疊</button>
+        <button class="lesson-step" data-lesson="filter" onclick="goLesson('filter')">⑤ 濾波與 FFT</button>
+        <button class="lesson-step" data-lesson="emg" onclick="goLesson('emg')">⑥ EMG 包絡</button>
       </div>
       <p class="lesson-task" id="lesson-task" aria-live="polite">點選教學步驟，網頁會自動切換分頁並設定示範參數。</p>
       <div class="lesson-actions"><button onclick="goLessonPrev()">上一個實驗</button><button class="next" onclick="goLessonNext()">下一個實驗 →</button><span class="note">可自由修改參數；切換步驟會載入預設值。</span></div>
@@ -303,6 +304,31 @@
       </div>
       <div class="challenge" style="margin-top:.8rem"><strong>課堂挑戰</strong>把共同干擾調到 1.0 V，切換單端／差動量測。為什麼兩者差異這麼大？差動放大器與差動 ADC 是同一個元件嗎？</div>
       <div class="note" style="margin-top:.7rem">EMG 典型流程：兩個量測電極 → 差動式儀表放大器與訊號調理 → 加入適當偏壓 → ESP32／Arduino 單端 ADC。具差動輸入的外接 ADC 是另一種硬體選擇。此圖為簡化的量測原理示意。</div>
+    </section>
+
+    <section class="card diff-experiment" id="amp-experiment" style="margin-top:1rem" aria-label="Grove EMG 放大與 ADC 模擬">
+      <div class="chart-title"><span>實驗 ②：為什麼 Grove EMG 需要放大與訊號調理？</span><span class="note">全程虛擬訊號・非 Grove 實際電路參數</span></div>
+      <p class="note">原始肌電只有微伏至毫伏等級。儀表放大器放大兩電極的差異，訊號調理電路再讓輸出適合 ADC 讀取。下圖以理想 12-bit、0–3.3 V ADC 示範。</p>
+      <div class="diff-grid">
+        <div class="diff-controls">
+          <div class="ctrl-item"><label for="amp-gain">模擬放大倍率 <span class="val-tag" id="amp-gain-value">100×</span></label><input id="amp-gain" type="range" min="1" max="1500" step="1" value="100"></div>
+          <div class="ctrl-item"><label for="amp-signal">原始肌電振幅 <span class="val-tag" id="amp-signal-value">0.50 mV</span></label><input id="amp-signal" type="range" min="0.05" max="2" step="0.05" value="0.5"></div>
+          <div class="info-grid" style="grid-template-columns:1fr"><div>ADC 理想量化間距：<b>約 0.806 mV / 階</b></div><div>輸出偏壓：<b>1.65 V</b></div><div id="amp-result" style="line-height:1.6"></div></div>
+          <div class="challenge"><strong>課堂挑戰</strong>先設為 1×，再改成 100×、1000×。為什麼放大後才容易辨識？放大太多又會發生什麼事？</div>
+        </div>
+        <div>
+          <div class="chart-title">上圖：原始 EMG（mV）　下圖：ADC 量測輸出（V）</div>
+          <svg id="amp-svg" class="diff-plot" viewBox="0 0 640 340" role="img" aria-label="原始 EMG 與經過放大後 ADC 量化波形">
+            <rect x="48" y="22" width="570" height="120" fill="#f8fafc" rx="5"/><rect x="48" y="183" width="570" height="120" fill="#f8fafc" rx="5"/>
+            <path d="M48 82 H618 M48 243 H618" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+            <text x="8" y="31" font-size="12" fill="#475569">mV</text><text x="8" y="193" font-size="12" fill="#475569">V</text>
+            <path id="amp-raw" stroke="#0d9488" stroke-width="1.6" fill="none"/>
+            <path id="amp-adc" stroke="#d97706" stroke-width="2" fill="none"/>
+            <text x="48" y="326" font-size="12" fill="#64748b">時間 →（同一段模擬訊號；上下圖使用不同電壓尺度）</text>
+          </svg>
+          <p class="note" id="amp-note">這是教學用理想 ADC 模型，沒有模擬實際 ESP32 的非線性、雜訊或 Grove 的完整濾波特性。</p>
+        </div>
+      </div>
     </section>
     </div>
 
@@ -1225,9 +1251,39 @@
       [chartSample,chartQuant,chartFilterTime,chartFilterFFT,chartEmgStage1,chartEmgStage2].forEach(c => c.resize());
     });
 
+
+    // EMG 類比前端教學模型：原始微弱訊號 -> 放大 + 1.65 V 偏壓 -> 理想 12-bit ADC
+    function renderAmplifier(){
+      const gain=Number(document.getElementById('amp-gain').value);
+      const mv=Number(document.getElementById('amp-signal').value);
+      document.getElementById('amp-gain-value').textContent=gain+'×';
+      document.getElementById('amp-signal-value').textContent=mv.toFixed(2)+' mV';
+      const n=450, raw=[], adc=[];let clipped=false, codes=new Set();
+      for(let i=0;i<n;i++){
+        const t=i/(n-1), x=48+t*570;
+        const carrier=.58*Math.sin(2*Math.PI*13*t)+.27*Math.sin(2*Math.PI*29*t+.4)+.15*Math.sin(2*Math.PI*47*t+1.1);
+        const env=.12+.88*Math.pow(Math.sin(Math.PI*t),2);
+        const v=mv*env*carrier;
+        raw.push((i?'L':'M')+x.toFixed(2)+' '+(82-v/(mv*1.3)*55).toFixed(2));
+        const voltage=1.65+v/1000*gain;
+        if(voltage<0||voltage>3.3)clipped=true;
+        const limited=Math.max(0,Math.min(3.3,voltage));
+        const code=Math.min(4095,Math.floor(limited/3.3*4096));codes.add(code);
+        const quantized=(code+.5)*3.3/4096;
+        adc.push((i?'L':'M')+x.toFixed(2)+' '+(303-quantized/3.3*120).toFixed(2));
+      }
+      document.getElementById('amp-raw').setAttribute('d',raw.join(' '));
+      document.getElementById('amp-adc').setAttribute('d',adc.join(' '));
+      const peak=mv*gain/1000;
+      document.getElementById('amp-result').textContent='放大後最大可能峰值：約 ±'+peak.toFixed(3)+' V；'+(clipped?'部分訊號超出 0–3.3 V，發生削頂。':codes.size<12?'量化後只有少數刻度，變化不容易辨識。':'訊號變化可在 ADC 上明顯辨識。');
+    }
+    ['amp-gain','amp-signal'].forEach(id=>document.getElementById(id).addEventListener('input',renderAmplifier));
+    renderAmplifier();
+
     // 課堂導覽：投影片可連結到 #diff、#bits、#sample、#filter、#emg
-    const lessonOrder=['diff','bits','sample','filter','emg'];
+    const lessonOrder=['diff','amp','bits','sample','filter','emg'];
     const lessonTasks={
+      amp:'調整 EMG 放大倍率：從 1× 到 100×、1000×，觀察 ADC 的量化與飽和削頂。',
       diff:'將共模干擾設為 1.0 V，切換單端與差動。觀察兩條曲線的差異。理想模型不代表實際 CMRR。',
       bits:'依序切換 2、4、6、8-bit，觀察藍色波形逐漸接近灰色原始波形。高位元數差異不明顯是正常的。',
       sample:'設定訊號 5 Hz、取樣 10 Hz；切換起始時間 0 與 0.01 秒，觀察取樣點是否能呈現原始波形。再改成 30 Hz 比較。',
@@ -1241,13 +1297,14 @@
       activeLesson=key;
       document.querySelectorAll('.lesson-step').forEach(b=>b.classList.toggle('active',b.dataset.lesson===key));
       document.getElementById('lesson-task').textContent=lessonTasks[key];
-      const tab=(key==='diff')?'tab-diff':(key==='filter')?'tab-filter':(key==='emg')?'tab-emg':'tab-adc';
+      const tab=(key==='diff'||key==='amp')?'tab-diff':(key==='filter')?'tab-filter':(key==='emg')?'tab-emg':'tab-adc';
       const btn=document.querySelector('.tab-btn[onclick*="'+tab+'"]');
       if(btn)switchTab(tab,btn);
       if(key==='diff'){
         setValue('diff-noise','1');
         document.querySelector('input[name="diff-mode"][value="single"]').checked=true;
         renderDifferential();
+      } else if(key==='amp'){setValue('amp-gain','1');setValue('amp-signal','0.5');renderAmplifier();
       } else if(key==='bits'){
         setValue('sel-board','3.3');setValue('rng-amp','1.5');setValue('rng-dc','1.65');
         setValue('rng-bits','2');setValue('rng-fs','30');setValue('rng-fsig','5');setValue('sel-start','0');renderADC();
@@ -1261,7 +1318,7 @@
         document.getElementById('chk-emg-rect').checked=true;setValue('rng-emg-env','25');renderEMG();
       }
       if(scroll){
-        const target=key==='diff'?document.getElementById('diff-experiment'):document.querySelector('#'+tab+' .control-panel');
+        const target=(key==='diff'||key==='amp')?document.getElementById(key==='amp'?'amp-experiment':'diff-experiment'):document.querySelector('#'+tab+' .control-panel');
         if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
       }
       history.replaceState(null,'','#'+key);
