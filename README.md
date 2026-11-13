@@ -8,7 +8,7 @@
 
 ## 📚 課程資源
 
-- 🌐 [EMG 互動式教材（免安裝，直接開啟）](https://seekjupiter.github.io/emg-interactive/)
+- 🌐 [EMG 互動式教材（免安裝，直接開啟）](https://seekjupiter.github.io/emg-workshop/)
 - 📑 [工作坊投影片 PDF](slides/EMG_workshop.pdf)
 - 🛠️ [ESP32 / Arduino IDE 安裝與燒錄教學](docs/ESP32_Setup_Guide.md)
 
@@ -65,7 +65,7 @@
 ## 📁 專案檔案
 
 ```text
-emg-interactive/
+emg-workshop/
 ├── index.html                 # 線上互動教材（GitHub Pages）
 ├── README.md                  # 本說明
 ├── 00_Install.bat             # Windows：建立 venv、安裝 Python 套件
