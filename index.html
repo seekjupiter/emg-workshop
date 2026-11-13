@@ -237,48 +237,47 @@
       .site-footer { justify-content: center; text-align: center; flex-direction: column; }
     }
 
-/* Guided lesson: compact teaching controls */
-.lesson-guide {background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:.8rem;margin-bottom:.8rem}
-.lesson-guide h2 {margin:0 0 .5rem;font-size:1rem;color:#075985}
-.lesson-steps {display:flex;gap:.35rem;flex-wrap:wrap}
-.lesson-step {border:1px solid #cbd5e1;border-radius:8px;background:white;color:#334155;padding:.55rem .65rem;cursor:pointer;font-weight:600;font-size:.8rem}
-.lesson-step.active {background:#0284c7;color:white;border-color:#0284c7}
-.lesson-task {margin:.6rem 0 0;color:#334155;line-height:1.55;font-size:.85rem}
-.lesson-actions {display:flex;gap:.5rem;align-items:center;margin-top:.55rem;flex-wrap:wrap}
-.lesson-actions button {background:#fff;border:1px solid #94a3b8;border-radius:7px;padding:.4rem .7rem;cursor:pointer;color:#075985}
-.lesson-actions .next {background:#0284c7;color:white;border-color:#0284c7}
-@media(max-width:600px){.lesson-step{flex:1 1 45%}.lesson-guide{padding:.65rem}}
 
   </style>
 </head>
 <body>
   <div class="container">
-
-    <section class="lesson-guide" aria-label="課堂操作導覽">
-      <h2>課堂互動導覽｜跟著投影片做實驗</h2>
-      <div class="lesson-steps">
-        <button class="lesson-step" data-lesson="diff" onclick="goLesson('diff')">① 雜訊與差動</button>
-        <button class="lesson-step" data-lesson="amp" onclick="goLesson('amp')">② EMG 放大與 ADC</button>
-        <button class="lesson-step" data-lesson="bits" onclick="goLesson('bits')">③ ADC 量化</button>
-        <button class="lesson-step" data-lesson="sample" onclick="goLesson('sample')">④ 取樣與混疊</button>
-        <button class="lesson-step" data-lesson="filter" onclick="goLesson('filter')">⑤ 濾波與 FFT</button>
-        <button class="lesson-step" data-lesson="emg" onclick="goLesson('emg')">⑥ EMG 包絡</button>
-      </div>
-      <p class="lesson-task" id="lesson-task" aria-live="polite">點選教學步驟，網頁會自動切換分頁並設定示範參數。</p>
-      <div class="lesson-actions"><button onclick="goLessonPrev()">上一個實驗</button><button class="next" onclick="goLessonNext()">下一個實驗 →</button><span class="note">可自由修改參數；切換步驟會載入預設值。</span></div>
-    </section>
     <nav class="tab-bar" aria-label="互動實驗單元">
-      <button class="tab-btn active" onclick="switchTab('tab-diff', this)">① 雜訊與差動</button>
-      <button class="tab-btn" onclick="switchTab('tab-adc', this)">② ADC 與取樣</button>
-      <button class="tab-btn" onclick="switchTab('tab-filter', this)">③ 濾波與 FFT</button>
-      <button class="tab-btn" onclick="switchTab('tab-emg', this)">④ EMG 處理</button>
+      <button class="tab-btn active" onclick="switchTab('tab-diff', this)">① 放大與差動</button>
+      <button class="tab-btn" onclick="switchTab('tab-adc', this)">② 量化與取樣</button>
+      <button class="tab-btn" onclick="switchTab('tab-filter', this)">③ 濾波與頻譜</button>
+      <button class="tab-btn" onclick="switchTab('tab-emg', this)">④ EMG 訊號處理</button>
     </nav>
 
     <!-- 單元 0：獨立的差動量測實驗 -->
     <div id="tab-diff" class="tab-content active">
     <!-- 單端與差動量測：獨立互動區塊，仍屬於第一單元 -->
-    <section class="card diff-experiment" id="diff-experiment" aria-label="單端與差動量測比較">
-      <div class="chart-title"><span>實驗 ①：單端 vs. 差動量測</span><span style="font-size:.75rem;color:var(--muted)">調整共模干擾，觀察輸出差異</span></div>
+    <section class="card diff-experiment" id="amp-experiment" aria-label="Grove EMG 放大與 ADC 模擬">
+      <div class="chart-title"><span>為什麼 Grove EMG 需要放大與訊號調理？</span><span class="note">教學用理想模型</span></div>
+      <p class="note">原始肌電只有微伏至毫伏等級。儀表放大器放大兩電極的差異，訊號調理電路再讓輸出適合 ADC 讀取。下圖以理想 12-bit、0–3.3 V ADC 示範。</p>
+      <div class="diff-grid">
+        <div class="diff-controls">
+          <div class="ctrl-item"><label for="amp-gain">模擬放大倍率 <span class="val-tag" id="amp-gain-value">100×</span></label><input id="amp-gain" type="range" min="1" max="1500" step="1" value="100"></div>
+          <div class="ctrl-item"><label for="amp-signal">原始肌電振幅 <span class="val-tag" id="amp-signal-value">0.50 mV</span></label><input id="amp-signal" type="range" min="0.05" max="2" step="0.05" value="0.5"></div>
+          <div class="info-grid" style="grid-template-columns:1fr"><div>ADC 理想量化間距：<b>約 0.806 mV / 階</b></div><div>輸出偏壓：<b>1.65 V</b></div><div id="amp-result" style="line-height:1.6"></div></div>
+        </div>
+        <div>
+          <div class="chart-title">上圖：原始 EMG（mV）　下圖：ADC 量測輸出（V）</div>
+          <svg id="amp-svg" class="diff-plot" viewBox="0 0 640 340" role="img" aria-label="原始 EMG 與經過放大後 ADC 量化波形">
+            <rect x="48" y="22" width="570" height="120" fill="#f8fafc" rx="5"/><rect x="48" y="183" width="570" height="120" fill="#f8fafc" rx="5"/>
+            <path d="M48 82 H618 M48 243 H618" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+            <text x="8" y="31" font-size="12" fill="#475569">mV</text><text x="8" y="193" font-size="12" fill="#475569">V</text>
+            <path id="amp-raw" stroke="#0d9488" stroke-width="1.6" fill="none"/>
+            <path id="amp-adc" stroke="#d97706" stroke-width="2" fill="none"/>
+            <text x="48" y="326" font-size="12" fill="#64748b">時間 →（同一段模擬訊號；上下圖使用不同電壓尺度）</text>
+          </svg>
+          <p class="note" id="amp-note">這是教學用理想 ADC 模型，沒有模擬實際 ESP32 的非線性、雜訊或 Grove 的完整濾波特性。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card diff-experiment" id="diff-experiment" style="margin-top:1rem" aria-label="單端與差動量測比較">
+      <div class="chart-title"><span>單端 vs. 差動量測</span><span style="font-size:.75rem;color:var(--muted)">調整共模干擾，觀察輸出差異</span></div>
       <div class="diff-grid">
         <div class="diff-controls">
           <div class="diff-choices" role="radiogroup" aria-label="量測方式">
@@ -302,33 +301,7 @@
           <div class="note" style="margin-top:.5rem">教學用理想模型：兩端受到相同共模干擾時，理想差動相減可將其抵消。實際抑制效果受 CMRR、電極接觸阻抗及電路限制影響。</div>
         </div>
       </div>
-      <div class="challenge" style="margin-top:.8rem"><strong>課堂挑戰</strong>把共同干擾調到 1.0 V，切換單端／差動量測。為什麼兩者差異這麼大？差動放大器與差動 ADC 是同一個元件嗎？</div>
       <div class="note" style="margin-top:.7rem">EMG 典型流程：兩個量測電極 → 差動式儀表放大器與訊號調理 → 加入適當偏壓 → ESP32／Arduino 單端 ADC。具差動輸入的外接 ADC 是另一種硬體選擇。此圖為簡化的量測原理示意。</div>
-    </section>
-
-    <section class="card diff-experiment" id="amp-experiment" style="margin-top:1rem" aria-label="Grove EMG 放大與 ADC 模擬">
-      <div class="chart-title"><span>實驗 ②：為什麼 Grove EMG 需要放大與訊號調理？</span><span class="note">全程虛擬訊號・非 Grove 實際電路參數</span></div>
-      <p class="note">原始肌電只有微伏至毫伏等級。儀表放大器放大兩電極的差異，訊號調理電路再讓輸出適合 ADC 讀取。下圖以理想 12-bit、0–3.3 V ADC 示範。</p>
-      <div class="diff-grid">
-        <div class="diff-controls">
-          <div class="ctrl-item"><label for="amp-gain">模擬放大倍率 <span class="val-tag" id="amp-gain-value">100×</span></label><input id="amp-gain" type="range" min="1" max="1500" step="1" value="100"></div>
-          <div class="ctrl-item"><label for="amp-signal">原始肌電振幅 <span class="val-tag" id="amp-signal-value">0.50 mV</span></label><input id="amp-signal" type="range" min="0.05" max="2" step="0.05" value="0.5"></div>
-          <div class="info-grid" style="grid-template-columns:1fr"><div>ADC 理想量化間距：<b>約 0.806 mV / 階</b></div><div>輸出偏壓：<b>1.65 V</b></div><div id="amp-result" style="line-height:1.6"></div></div>
-          <div class="challenge"><strong>課堂挑戰</strong>先設為 1×，再改成 100×、1000×。為什麼放大後才容易辨識？放大太多又會發生什麼事？</div>
-        </div>
-        <div>
-          <div class="chart-title">上圖：原始 EMG（mV）　下圖：ADC 量測輸出（V）</div>
-          <svg id="amp-svg" class="diff-plot" viewBox="0 0 640 340" role="img" aria-label="原始 EMG 與經過放大後 ADC 量化波形">
-            <rect x="48" y="22" width="570" height="120" fill="#f8fafc" rx="5"/><rect x="48" y="183" width="570" height="120" fill="#f8fafc" rx="5"/>
-            <path d="M48 82 H618 M48 243 H618" stroke="#cbd5e1" stroke-dasharray="4 4"/>
-            <text x="8" y="31" font-size="12" fill="#475569">mV</text><text x="8" y="193" font-size="12" fill="#475569">V</text>
-            <path id="amp-raw" stroke="#0d9488" stroke-width="1.6" fill="none"/>
-            <path id="amp-adc" stroke="#d97706" stroke-width="2" fill="none"/>
-            <text x="48" y="326" font-size="12" fill="#64748b">時間 →（同一段模擬訊號；上下圖使用不同電壓尺度）</text>
-          </svg>
-          <p class="note" id="amp-note">這是教學用理想 ADC 模型，沒有模擬實際 ESP32 的非線性、雜訊或 Grove 的完整濾波特性。</p>
-        </div>
-      </div>
     </section>
     </div>
 
@@ -406,7 +379,6 @@
             電壓擺盪區間：<span id="txt-range" style="font-family: monospace;">0.15V ~ 3.15V</span>
           </div>
         </div>
-        <div class="challenge"><strong>課堂挑戰</strong>先把位元數從 2 調到 8，看看藍線怎麼變；再將取樣頻率從 10 Hz 調到 30 Hz，比較紅點多寡。</div>
       </aside>
 
       <main>
@@ -534,7 +506,6 @@
             • 微控制器差分式：y[n] = αx[n] + (1−α)y[n−1]。
           </div>
         </div>
-        <div class="challenge"><strong>課堂挑戰</strong>比較 Bypass、低通與高通：哪種濾波器能減少低頻漂移？截止頻率太低會發生什麼事？</div>
       </aside>
 
       <main>
@@ -617,8 +588,7 @@
             • <b>整流 + 包絡線</b>：得到肌肉活化振幅指標，經校正、閾值判斷及安全控制後才用於驅動裝置。
           </div>
         </div>
-        <div class="note">本單元使用虛擬 EMG 訊號，方便觀察不同處理步驟對波形的影響。</div>
-        <div class="challenge"><strong>課堂挑戰</strong>關閉整流，觀察包絡線的變化。為什麼原始 EMG 的瞬時正負電壓不適合直接當作肌力？</div>
+        <div class="note">本頁以合成 EMG 訊號說明訊號處理原理；與實作使用的 Grove 模組輸出不同。</div>
       </aside>
 
       <main>
@@ -1279,54 +1249,6 @@
     }
     ['amp-gain','amp-signal'].forEach(id=>document.getElementById(id).addEventListener('input',renderAmplifier));
     renderAmplifier();
-
-    // 課堂導覽：投影片可連結到 #diff、#bits、#sample、#filter、#emg
-    const lessonOrder=['diff','amp','bits','sample','filter','emg'];
-    const lessonTasks={
-      amp:'調整 EMG 放大倍率：從 1× 到 100×、1000×，觀察 ADC 的量化與飽和削頂。',
-      diff:'將共模干擾設為 1.0 V，切換單端與差動。觀察兩條曲線的差異。理想模型不代表實際 CMRR。',
-      bits:'依序切換 2、4、6、8-bit，觀察藍色波形逐漸接近灰色原始波形。高位元數差異不明顯是正常的。',
-      sample:'設定訊號 5 Hz、取樣 10 Hz；切換起始時間 0 與 0.01 秒，觀察取樣點是否能呈現原始波形。再改成 30 Hz 比較。',
-      filter:'先選 Bypass，觀察低頻漂移與高頻雜訊；再切換 HPF、LPF，對照時域與 FFT 頻譜。',
-      emg:'先看兩次發力，切換整流並調整包絡視窗；再比較持續用力與放鬆。本實驗使用虛擬 EMG 訊號。'
-    };
-    let activeLesson='diff';
-    function setValue(id,value){const e=document.getElementById(id);if(e)e.value=value;}
-    function goLesson(key,scroll=true){
-      if(!lessonOrder.includes(key))key='diff';
-      activeLesson=key;
-      document.querySelectorAll('.lesson-step').forEach(b=>b.classList.toggle('active',b.dataset.lesson===key));
-      document.getElementById('lesson-task').textContent=lessonTasks[key];
-      const tab=(key==='diff'||key==='amp')?'tab-diff':(key==='filter')?'tab-filter':(key==='emg')?'tab-emg':'tab-adc';
-      const btn=document.querySelector('.tab-btn[onclick*="'+tab+'"]');
-      if(btn)switchTab(tab,btn);
-      if(key==='diff'){
-        setValue('diff-noise','1');
-        document.querySelector('input[name="diff-mode"][value="single"]').checked=true;
-        renderDifferential();
-      } else if(key==='amp'){setValue('amp-gain','1');setValue('amp-signal','0.5');renderAmplifier();
-      } else if(key==='bits'){
-        setValue('sel-board','3.3');setValue('rng-amp','1.5');setValue('rng-dc','1.65');
-        setValue('rng-bits','2');setValue('rng-fs','30');setValue('rng-fsig','5');setValue('sel-start','0');renderADC();
-      } else if(key==='sample'){
-        setValue('sel-board','3.3');setValue('rng-amp','1.5');setValue('rng-dc','1.65');
-        setValue('rng-bits','8');setValue('rng-fs','10');setValue('rng-fsig','5');setValue('sel-start','0');renderADC();
-      } else if(key==='filter'){
-        setValue('sel-filter-type','none');renderFilter();
-      } else if(key==='emg'){
-        setValue('sel-emg-state','pulse');document.getElementById('chk-emg-bpf').checked=true;
-        document.getElementById('chk-emg-rect').checked=true;setValue('rng-emg-env','25');renderEMG();
-      }
-      if(scroll){
-        const target=(key==='diff'||key==='amp')?document.getElementById(key==='amp'?'amp-experiment':'diff-experiment'):document.querySelector('#'+tab+' .control-panel');
-        if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
-      }
-      history.replaceState(null,'','#'+key);
-    }
-    function goLessonPrev(){goLesson(lessonOrder[Math.max(0,lessonOrder.indexOf(activeLesson)-1)]);}
-    function goLessonNext(){goLesson(lessonOrder[Math.min(lessonOrder.length-1,lessonOrder.indexOf(activeLesson)+1)]);}
-    goLesson(lessonOrder.includes(location.hash.slice(1))?location.hash.slice(1):'diff',false);
-    window.addEventListener('hashchange',()=>{const key=location.hash.slice(1);if(lessonOrder.includes(key))goLesson(key);});
 
   </script>
 </body>
