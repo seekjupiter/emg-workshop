@@ -1,4 +1,4 @@
-# ESP32-C3 安裝與燒錄教學（Windows）
+# Android IDE 額外開發板安裝與燒錄教學（Windows）
 
 本教學搭配 **Seeed XIAO ESP32-C3、Grove EMG Detector** 與工作坊提供的 `esp32_emg_500hz.ino`。請在課前完成步驟 1–4；課堂上再接上 EMG 模組量測。
 
