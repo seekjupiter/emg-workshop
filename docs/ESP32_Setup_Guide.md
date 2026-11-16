@@ -8,11 +8,12 @@
 2. 下載並安裝 **Arduino IDE 2.x（Windows）**。
 3. 安裝完成後開啟 Arduino IDE。
 
-## 2. 安裝 ESP32 開發板套件
+## 2. 安裝開發板套件
 
 1. 在 Arduino IDE 開啟 **File → Preferences**（檔案 → 偏好設定）。
 2. 找到 **Additional Boards Manager URLs**（其他開發板管理員網址），加入：
 
+   for esp32
    ```text
    https://espressif.github.io/arduino-esp32/package_esp32_index.json
    ```
