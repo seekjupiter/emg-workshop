@@ -16,7 +16,10 @@
    ```text
    https://espressif.github.io/arduino-esp32/package_esp32_index.json
    ```
-
+   for SAMD21
+   ```text
+   https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+   ```
    若原本已有其他網址，請保留，使用右側編輯按鈕另起一行加入。
 3. 開啟左側 **Boards Manager**（開發板管理員），搜尋 `esp32`。
 4. 安裝 **esp32 by Espressif Systems**。第一次安裝需要網路，可能花幾分鐘。
